@@ -1,0 +1,121 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - netbox-postgres-data:/var/lib/postgresql/data
+    networks:
+      - netbox-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - netbox-redis-data:/data
+    networks:
+      - netbox-internal
+
+  redis-cache:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - netbox-redis-cache-data:/data
+    networks:
+      - netbox-internal
+
+  netbox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NETBOX_VERSION: ${NETBOX_VERSION}
+    image: hamk-netbox-custom:${NETBOX_VERSION}
+    restart: unless-stopped
+    command: /bin/bash /opt/netbox/startup.sh
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/login/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      redis-cache:
+        condition: service_started
+    environment:
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_CACHE_HOST: redis-cache
+      REDIS_CACHE_PORT: 6379
+      SECRET_KEY: ${NETBOX_SECRET_KEY}
+      SUPERUSER_NAME: ${NETBOX_SUPERUSER_NAME}
+      SUPERUSER_EMAIL: ${NETBOX_SUPERUSER_EMAIL}
+      SUPERUSER_PASSWORD: ${NETBOX_SUPERUSER_PASSWORD}
+      TZ: ${TZ}
+    ports:
+      - "${NETBOX_HOST_PORT}:8080"
+    volumes:
+      - netbox-media-files:/opt/netbox/netbox/media
+      - ./plugins/plugins.py:/etc/netbox/config/plugins.py:ro
+      - ./startup.sh:/opt/netbox/startup.sh:ro
+    networks:
+      - netbox-internal
+      - clab-mgmt
+
+  netbox-worker:
+    image: hamk-netbox-custom:${NETBOX_VERSION}
+    restart: unless-stopped
+    depends_on:
+      netbox:
+        condition: service_healthy
+    command: /opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py rqworker
+    environment:
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_CACHE_HOST: redis-cache
+      REDIS_CACHE_PORT: 6379
+      SECRET_KEY: ${NETBOX_SECRET_KEY}
+      TZ: ${TZ}
+    networks:
+      - netbox-internal
+    volumes:
+      - ./plugins/plugins.py:/etc/netbox/config/plugins.py:ro
+
+networks:
+  netbox-internal:
+    driver: bridge
+  clab-mgmt:
+    external: true
+    name: clab-mgmt
+
+volumes:
+  netbox-postgres-data:
+  netbox-redis-data:
+  netbox-redis-cache-data:
+  netbox-media-files:

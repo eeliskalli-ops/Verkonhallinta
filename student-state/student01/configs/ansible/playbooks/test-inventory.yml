@@ -1,0 +1,61 @@
+---
+# ============================================================
+# Ansible Inventory Validation Playbook
+# ============================================================
+# Test that all hosts in inventory are reachable
+# Usage: ansible-playbook -i inventory.ini test-inventory.yml
+# ============================================================
+
+- name: Test Router Connectivity
+  hosts: routers
+  gather_facts: false
+  tasks:
+    - name: Check router reachability
+      ansible.builtin.ping:
+      register: ping_result
+      ignore_errors: true
+    
+    - name: Report router status
+      ansible.builtin.debug:
+        msg: "Router {{ inventory_hostname }} is {{ 'REACHABLE' if ping_result is success else 'UNREACHABLE' }}"
+
+- name: Test Linux Hosts Connectivity
+  hosts: linux_hosts
+  gather_facts: true
+  tasks:
+    - name: Check host reachability
+      ansible.builtin.ping:
+      register: ping_result
+      ignore_errors: true
+    
+    - name: Gather basic facts
+      ansible.builtin.setup:
+        gather_subset:
+          - min
+      when: ping_result is success
+    
+    - name: Report host status
+      ansible.builtin.debug:
+        msg: |
+          Host: {{ inventory_hostname }}
+          Status: {{ 'REACHABLE' if ping_result is success else 'UNREACHABLE' }}
+          OS: {{ ansible_distribution | default('N/A') }} {{ ansible_distribution_version | default('') }}
+          Python: {{ ansible_python_version | default('N/A') }}
+
+- name: Inventory Summary
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Display inventory groups
+      ansible.builtin.debug:
+        msg: |
+          ================================================
+          INVENTORY SUMMARY
+          ================================================
+          Total hosts: {{ groups['all'] | length }}
+          Routers: {{ groups['routers'] | length }}
+          Clients: {{ groups['clients'] | length }}
+          Servers: {{ groups['servers'] | length }}
+          Monitoring: {{ groups['monitoring'] | length }}
+          Management: {{ groups['management'] | length }}
+          ================================================

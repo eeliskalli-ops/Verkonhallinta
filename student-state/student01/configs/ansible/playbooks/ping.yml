@@ -1,0 +1,22 @@
+---
+- name: Test Linux hosts
+  hosts: linux_hosts
+  gather_facts: false
+
+  tasks:
+    - name: Ping via Ansible
+      ansible.builtin.ping:
+
+- name: Test routers
+  hosts: routers
+  gather_facts: false
+
+  tasks:
+    - name: Run show version
+      ansible.netcommon.cli_command:
+        command: show version
+      register: result
+
+    - name: Display result
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} reachable"

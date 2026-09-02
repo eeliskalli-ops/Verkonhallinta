@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: labra-dashboards
+    orgId: 1
+    folder: Labra
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 15
+    options:
+      path: /var/lib/grafana/dashboards

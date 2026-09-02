@@ -1,0 +1,58 @@
+---
+- name: Install Prometheus Node Exporter
+  hosts: ubuntu_hosts
+  become: true
+
+  vars:
+    node_exporter_version: "1.9.1"
+
+  tasks:
+
+    - name: Install prerequisite packages
+      apt:
+        name:
+          - wget
+          - tar
+        state: present
+        update_cache: yes
+
+    - name: Create installation directory
+      file:
+        path: /opt/node_exporter
+        state: directory
+        mode: "0755"
+
+    - name: Download Node Exporter
+      get_url:
+        url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+        dest: /tmp/node_exporter.tar.gz
+
+    - name: Extract archive
+      unarchive:
+        src: /tmp/node_exporter.tar.gz
+        dest: /tmp
+        remote_src: yes
+
+    - name: Install exporter binary
+      copy:
+        src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
+        dest: /opt/node_exporter/node_exporter
+        mode: "0755"
+        remote_src: yes
+
+    - name: Start node_exporter
+      shell: |
+        pkill node_exporter || true
+        nohup /opt/node_exporter/node_exporter > /tmp/node_exporter.log 2>&1 &
+      args:
+        executable: /bin/bash
+
+    - name: Verify exporter responds
+      uri:
+        url: http://localhost:9100/metrics
+        status_code: 200
+      register: result
+
+    - name: Show verification result
+      debug:
+        msg: "Node Exporter running on {{ inventory_hostname }}"

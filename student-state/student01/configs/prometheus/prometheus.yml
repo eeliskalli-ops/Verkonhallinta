@@ -1,0 +1,81 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+
+scrape_configs:
+
+  #
+  # Prometheus itse
+  #
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - localhost:9090
+
+  #
+  # FRR-reitittimet
+  #
+  - job_name: routers
+    static_configs:
+      - targets:
+          - r1:9100
+          - r2:9100
+          - r3:9100
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "(.*):9100"
+        target_label: hostname
+        replacement: "$1"
+
+  #
+  # Työasemat
+  #
+  - job_name: clients
+    static_configs:
+      - targets:
+          - client1:9100
+          - branch-client:9100
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "(.*):9100"
+        target_label: hostname
+        replacement: "$1"
+
+  #
+  # Palvelimet
+  #
+  - job_name: servers
+    static_configs:
+      - targets:
+          - web1:9100
+          - db1:9100
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "(.*):9100"
+        target_label: hostname
+        replacement: "$1"
+
+  #
+  # Hallintapalvelut
+  #
+  - job_name: monitoring
+    static_configs:
+      - targets:
+          - ansible:9100
+          - grafana:9100
+          - zabbix:9100
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "(.*):9100"
+        target_label: hostname
+        replacement: "$1"
+
+  #
+  # Labran konttimetriikat (cAdvisor)
+  #
+  - job_name: cadvisor
+    static_configs:
+      - targets:
+          - cadvisor:8080

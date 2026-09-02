@@ -1,0 +1,55 @@
+---
+- name: Install and configure SNMP
+  hosts: ubuntu_hosts
+  become: true
+
+  vars:
+    snmp_community: public
+
+  tasks:
+
+    - name: Update package cache
+      apt:
+        update_cache: yes
+
+    - name: Install SNMP packages
+      apt:
+        name:
+          - snmp
+          - snmpd
+        state: present
+
+    - name: Configure SNMP community
+      copy:
+        dest: /etc/snmp/snmpd.conf
+        content: |
+          rocommunity {{ snmp_community }}
+
+          sysLocation HAMK Virtual Lab
+          sysContact Administrator
+
+          agentaddress udp:161
+
+      notify: restart snmpd
+
+    - name: Enable SNMP service
+      service:
+        name: snmpd
+        enabled: yes
+        state: started
+
+    - name: Verify SNMP process
+      shell: pgrep snmpd
+      register: snmpd_process
+      changed_when: false
+
+    - name: Display verification
+      debug:
+        msg: "SNMP agent running on {{ inventory_hostname }}"
+
+  handlers:
+
+    - name: restart snmpd
+      service:
+        name: snmpd
+        state: restarted
