@@ -106,3 +106,5 @@ Reittitaulukon mukaan kone on kytketty kolmeen verkkoon: 10.10.10.0, 10.255.12.0
 Yhteenveto
 
 Isoimmat ajankulutukset oli löytää oikeat koodit ja tarkat paikat mihin koodi kirjoitetaan. Topologia kuvan tekeminen oli myös aikaa vievä, koska IP-osoitteiden hakeminen ja tulkitseminen oli hankalaa, sekä reitityksen analysointi. Dokumentaatio näyttää heti missä verkossa mikäkin laite sijaitsee ja auttaa paikallistamaan mahdolliset ongelma kohdat, sekä kuuluuko laite sisä- tai ulkoverkkoon.
+
+Github linkki https://github.com/eeliskalli-ops/Verkonhallinta/blob/main/reports/week01.md
