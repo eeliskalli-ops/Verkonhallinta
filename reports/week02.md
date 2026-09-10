@@ -25,7 +25,7 @@ Usean laitteen valvonta aloitettiin asentamalla db1 ja branch-clientille snmpd j
 SNMP hyödyt ovat automaattinen tiedon hakeminen palvelimista, reitittimistä, kytkimistä ja muista laitteista. Protokollalla voi myös havaita vikatilanteita. SNMP:n vahvuus on yksinkertaisuus. Protokollalla voidaan kerätä laitteesta esimerkiksi nimi, käyttöjärjestelmä, käynnissäoloaika ja laitteen sijainti. Lisäksi silla voidaan hakea CPU-kuormaa, muistin käyttöä, levyjen tilaa, verkkoliikennettä ja prosesseja. SNMP:llä on huono suojaus joka altistaa tämän erinlaisiin hyökkäysmenetelmiin. V2 ei ole erillisiä käyttäjä tunnuksia, mikä tarkoittaa että kaikki ovat ylläpitäjä roolissa. Käyttäisin version 3 silloin kun yrityksissä noudatetaan GDPR tietosuoja-asetusta. Asetuksen tarkoitus on suojata käyttäjän yksityisyyttä ja henkilötietoja. 
 
 
-
+Github linkki:https://github.com/eeliskalli-ops/Verkonhallinta/blob/main/reports/week02.mdv
 
 
 
