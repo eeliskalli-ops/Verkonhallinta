@@ -141,6 +141,25 @@ ansible-playbook -i /ansible/inventory.ini /ansible/playbooks/install-node-expor
 
 # Configure SNMP on routers
 ansible-playbook -i /ansible/inventory.ini /ansible/playbooks/install-snmp.yml
+
+# Install the instrumented web service used by the PromQL examples
+ansible-playbook -i /ansible/inventory.ini /ansible/playbooks/install-web-monitoring-demo.yml
+```
+
+The web monitoring playbook installs a small Python service on `web1` at port
+`8080` and exposes Prometheus metrics at port `9101`. It provides the HTTP
+series used in the lecture examples, including request count, duration,
+response size, cache results, in-flight requests, active connections and queue
+length. Prometheus scrapes the endpoint through the `webapps` job in
+`configs/prometheus/prometheus.yml`.
+
+Generate sample traffic from a node that can reach `web1`:
+
+```bash
+curl http://web1:8080/
+curl http://web1:8080/api/items?cache=hit
+curl http://web1:8080/slow
+curl http://web1:9101/metrics
 ```
 
 ## Host Variables
@@ -217,6 +236,17 @@ ssh labadmin@clab-hamk-verkonhallinta-golden-web1
 - Verify root password: `Hamk2024!`
 - Check SSH config allows root login: `docker exec <container> grep PermitRootLogin /etc/ssh/sshd_config`
 - Restart SSH if needed: `docker exec <container> pkill -HUP sshd`
+
+### `unsupported locale setting`
+If Ansible fails before connecting to a host, use an available UTF-8 locale:
+```bash
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+```
+
+The control-node bootstrap configures this automatically for new sessions. For an
+existing control node, rerun `ansible-bootstrap.sh` or export the variables above
+before running `ansible-playbook`.
 
 ## Maintenance
 

@@ -3,6 +3,16 @@ set -euo pipefail
 
 echo "=== Ansible Control Node Bootstrap ==="
 
+# Keep Python and Ansible from inheriting an unavailable host locale.
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+cat > /etc/profile.d/ansible-locale.sh <<'EOF'
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+EOF
+chmod 644 /etc/profile.d/ansible-locale.sh
+echo "  ✓ UTF-8 locale configured"
+
 # Update package list
 apt-get update -qq
 

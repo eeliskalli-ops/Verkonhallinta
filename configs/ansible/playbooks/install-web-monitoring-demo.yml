@@ -1,0 +1,240 @@
+---
+- name: Install instrumented web service for Prometheus examples
+  hosts: web1
+  become: true
+
+  vars:
+    web_monitor_user: webmonitor
+    web_monitor_group: webmonitor
+    web_monitor_dir: /opt/web-monitor
+    web_monitor_port: 8080
+    web_monitor_service: web-monitor
+
+  tasks:
+    - name: Install Python runtime and virtual environment support
+      ansible.builtin.apt:
+        name:
+          - python3
+          - python3-venv
+        state: present
+        update_cache: true
+
+    - name: Create web monitor group
+      ansible.builtin.group:
+        name: "{{ web_monitor_group }}"
+        state: present
+
+    - name: Create web monitor user
+      ansible.builtin.user:
+        name: "{{ web_monitor_user }}"
+        group: "{{ web_monitor_group }}"
+        system: true
+        home: "{{ web_monitor_dir }}"
+        create_home: false
+        shell: /usr/sbin/nologin
+
+    - name: Create application directory
+      ansible.builtin.file:
+        path: "{{ web_monitor_dir }}"
+        state: directory
+        owner: "{{ web_monitor_user }}"
+        group: "{{ web_monitor_group }}"
+        mode: "0755"
+
+    - name: Create Python virtual environment
+      ansible.builtin.command:
+        cmd: python3 -m venv "{{ web_monitor_dir }}/venv"
+        creates: "{{ web_monitor_dir }}/venv/bin/python"
+
+    - name: Install Prometheus Python client
+      ansible.builtin.command:
+        cmd: "{{ web_monitor_dir }}/venv/bin/pip install --upgrade prometheus-client"
+      register: prometheus_client_install
+      changed_when: "'Requirement already satisfied' not in prometheus_client_install.stdout"
+
+    - name: Install instrumented demo web service
+      ansible.builtin.copy:
+        dest: "{{ web_monitor_dir }}/app.py"
+        owner: "{{ web_monitor_user }}"
+        group: "{{ web_monitor_group }}"
+        mode: "0755"
+        content: |
+          #!/usr/bin/env python3
+          import threading
+          import time
+          from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+          from prometheus_client import Counter, Gauge, Histogram, start_http_server
+
+          HTTP_REQUESTS = Counter(
+              "http_requests_total",
+              "Total HTTP requests handled by the demo service",
+              ["method", "path", "status"],
+          )
+          HTTP_DURATION = Histogram(
+              "http_request_duration_seconds",
+              "HTTP request duration in seconds",
+              ["method", "path"],
+          )
+          HTTP_RESPONSE_SIZE = Histogram(
+              "http_response_size_bytes",
+              "HTTP response size in bytes",
+              ["method", "path"],
+          )
+          HTTP_CACHE_REQUESTS = Counter(
+              "http_cache_requests_total",
+              "Cache requests by result",
+              ["result"],
+          )
+          HTTP_REQUESTS_IN_FLIGHT = Gauge(
+              "http_requests_in_flight",
+              "HTTP requests currently being handled",
+          )
+          HTTP_CONNECTIONS_ACTIVE = Gauge(
+              "http_connections_active",
+              "Active HTTP connections",
+          )
+          HTTP_REQUEST_QUEUE = Gauge(
+              "http_request_queue_length",
+              "Estimated requests waiting behind active work",
+          )
+          ACTIVE_REQUESTS = 0
+          ACTIVE_REQUESTS_LOCK = threading.Lock()
+
+          def update_active_requests(delta):
+              global ACTIVE_REQUESTS
+              with ACTIVE_REQUESTS_LOCK:
+                  ACTIVE_REQUESTS += delta
+                  HTTP_REQUESTS_IN_FLIGHT.set(ACTIVE_REQUESTS)
+                  HTTP_REQUEST_QUEUE.set(max(ACTIVE_REQUESTS - 1, 0))
+
+          class Handler(BaseHTTPRequestHandler):
+              server_version = "WebMonitorDemo/1.0"
+
+              def do_GET(self):
+                  started = time.perf_counter()
+                  path = self.path.split("?", 1)[0]
+                  status = 200
+                  body = b""
+                  HTTP_CONNECTIONS_ACTIVE.inc()
+                  update_active_requests(1)
+
+                  try:
+                      if path == "/":
+                          body = b"web1 monitoring demo\n"
+                      elif path == "/health":
+                          body = b"ok\n"
+                      elif path == "/api/items":
+                          result = "hit" if "cache=hit" in self.path else "miss"
+                          HTTP_CACHE_REQUESTS.labels(result=result).inc()
+                          body = b"{\"items\":[\"prometheus\",\"grafana\"]}\n"
+                      elif path == "/slow":
+                          time.sleep(0.25)
+                          body = b"slow response\n"
+                      else:
+                          status = 404
+                          body = b"not found\n"
+
+                      self.send_response(status)
+                      self.send_header("Content-Type", "text/plain; charset=utf-8")
+                      self.send_header("Content-Length", str(len(body)))
+                      self.end_headers()
+                      self.wfile.write(body)
+                  finally:
+                      HTTP_REQUESTS.labels(
+                          method="GET", path=path, status=str(status)
+                      ).inc()
+                      HTTP_DURATION.labels(method="GET", path=path).observe(
+                          time.perf_counter() - started
+                      )
+                      HTTP_RESPONSE_SIZE.labels(method="GET", path=path).observe(len(body))
+                      update_active_requests(-1)
+                      HTTP_CONNECTIONS_ACTIVE.dec()
+
+              def log_message(self, _format, *_args):
+                  return
+
+          if __name__ == "__main__":
+              start_http_server(9101)
+              server = ThreadingHTTPServer(("0.0.0.0", {{ web_monitor_port }}), Handler)
+              server.serve_forever()
+
+    - name: Install container service
+      ansible.builtin.copy:
+        dest: "/etc/init.d/{{ web_monitor_service }}"
+        owner: root
+        group: root
+        mode: "0755"
+        content: |
+          #!/bin/sh
+          ### BEGIN INIT INFO
+          # Provides:          {{ web_monitor_service }}
+          # Required-Start:    $network
+          # Required-Stop:     $network
+          # Default-Start:     2 3 4 5
+          # Default-Stop:      0 1 6
+          # Short-Description: Instrumented web service for Prometheus training
+          ### END INIT INFO
+
+          PATH=/usr/sbin:/usr/bin:/sbin:/bin
+          NAME={{ web_monitor_service }}
+          PIDFILE=/run/$NAME.pid
+          WORKDIR={{ web_monitor_dir }}
+          PYTHON=$WORKDIR/venv/bin/python
+          APP=$WORKDIR/app.py
+          USER={{ web_monitor_user }}
+
+          case "$1" in
+            start)
+              start-stop-daemon --start --background --make-pidfile \
+                --pidfile "$PIDFILE" --chuid "$USER" --chdir "$WORKDIR" \
+                --startas "$PYTHON" -- "$APP"
+              ;;
+            stop)
+              start-stop-daemon --stop --retry=TERM/30/KILL/5 --pidfile "$PIDFILE"
+              rm -f "$PIDFILE"
+              ;;
+            restart)
+              "$0" stop
+              "$0" start
+              ;;
+            status)
+              start-stop-daemon --status --pidfile "$PIDFILE"
+              ;;
+            *)
+              echo "Usage: $0 {start|stop|restart|status}" >&2
+              exit 1
+              ;;
+          esac
+      notify: Restart web monitor
+
+    - name: Enable and start web monitor service
+      ansible.builtin.command:
+        cmd: "service {{ web_monitor_service }} start"
+      register: web_monitor_start
+      changed_when: web_monitor_start.rc == 0
+
+    - name: Verify application endpoint
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ web_monitor_port }}/"
+        status_code: 200
+        return_content: true
+      register: web_response
+
+    - name: Verify application metrics endpoint
+      ansible.builtin.uri:
+        url: http://127.0.0.1:9101/metrics
+        status_code: 200
+        return_content: true
+      register: metrics_response
+
+    - name: Show installation result
+      ansible.builtin.debug:
+        msg:
+          - "Web service: http://{{ ansible_host | default(inventory_hostname) }}:{{ web_monitor_port }}/"
+          - "Metrics: http://{{ ansible_host | default(inventory_hostname) }}:9101/metrics"
+          - "HTTP metrics are exported by the demo service"
+
+  handlers:
+    - name: Restart web monitor
+      ansible.builtin.command:
+        cmd: "service {{ web_monitor_service }} restart"

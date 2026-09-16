@@ -58,6 +58,9 @@ vault.key
 
 clab-*/
 *.bak
+topology/golden.*.clab.yml
+state/management/
+
 
 # Containerlab SSH helper file
 .clab/
@@ -129,6 +132,13 @@ captures/
 # --------------------------------------------------
 
 notes-private/
+state/
+student-state/
+configs/ansible/keys/
+topology/.generated/
+
+docs/student-work/
+
 
 # --------------------------------------------------
 # Secrets
