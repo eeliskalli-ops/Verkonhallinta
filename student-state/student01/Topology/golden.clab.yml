@@ -170,6 +170,7 @@ topology:
         - 9090:9090
       binds:
         - ../configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+        - ../state/management/prometheus-data:/prometheus
 
     cadvisor:
       kind: linux
@@ -187,6 +188,7 @@ topology:
       ports:
         - 3000:3000
       binds:
+        - ../state/management/grafana-data:/var/lib/grafana
         - ../configs/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
         - ../configs/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
         - ../configs/grafana/dashboards:/var/lib/grafana/dashboards
@@ -197,6 +199,9 @@ topology:
       ports:
         - 8080:80
         - 10051:10051
+      binds:
+        - ../state/management/zabbix-mysql:/var/lib/mysql
+        - ../state/management/zabbix-data:/var/lib/zabbix
 
     syslog:
       kind: linux

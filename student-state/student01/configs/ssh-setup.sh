@@ -27,6 +27,7 @@ fi
 mkdir -p /root/.ssh
 mkdir -p /run/sshd
 chmod 700 /root/.ssh
+chmod 700 /run/sshd
 
 # Configure SSH for Ansible/automation use
 cat > /etc/ssh/sshd_config <<'EOF'

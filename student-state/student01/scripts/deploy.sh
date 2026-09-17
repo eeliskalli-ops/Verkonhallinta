@@ -8,6 +8,7 @@ set -e
 # ----------------------------------------------------
 
 TOPOLOGY_FILE="topology/golden.clab.yml"
+STUDENT_ID="${STUDENT_ID:-student01}"
 NETBOX_DIR="configs/netbox"
 NETBOX_COMPOSE_FILE="${NETBOX_DIR}/docker-compose.yml"
 NETBOX_ENV_FILE="${NETBOX_DIR}/.env"
@@ -82,6 +83,13 @@ mkdir -p logs
 mkdir -p captures
 mkdir -p reports
 mkdir -p reports/generated
+mkdir -p state/management/prometheus-data
+mkdir -p state/management/grafana-data
+mkdir -p state/management/zabbix-mysql
+mkdir -p state/management/zabbix-data
+
+# prometheus/grafana/zabbix run as non-root users inside their containers
+chmod -R 777 state/management/prometheus-data state/management/grafana-data state/management/zabbix-mysql state/management/zabbix-data
 
 touch logs/.gitkeep
 touch captures/.gitkeep
@@ -93,6 +101,11 @@ echo "[OK] Hakemistot valmiina"
 # ----------------------------------------------------
 # Deploy lab
 # ----------------------------------------------------
+
+echo ""
+echo "[INFO] Palautetaan opiskelijan ${STUDENT_ID} konttien tallennettu tila..."
+
+TOPOLOGY_FILE="$(bash scripts/persist/render-topology.sh "${STUDENT_ID}")"
 
 echo ""
 echo "[INFO] Käynnistetään Containerlab..."

@@ -30,4 +30,25 @@ cat > "${STATE_ROOT}/student-id.txt" <<EOF
 ${STUDENT_ID}
 EOF
 
+# Persist the container filesystem state (installed packages, files, etc.)
+# for the server/client nodes by committing their current state as a
+# per-student docker image. containerlab destroy removes the containers,
+# but the committed image survives and is reused by render-topology.sh
+# on the next deploy so that changes made inside the containers persist.
+LAB_NAME="hamk-verkonhallinta-golden"
+PERSIST_NODES=(client1 attacker branch-client web1 db1)
+
+if command -v docker >/dev/null 2>&1; then
+	for node in "${PERSIST_NODES[@]}"; do
+		CONTAINER="clab-${LAB_NAME}-${node}"
+		if docker inspect "${CONTAINER}" >/dev/null 2>&1; then
+			IMAGE_TAG="clab-persist-${STUDENT_ID}-${node}:latest"
+			echo "[INFO] Tallennetaan kontin ${CONTAINER} tila -> ${IMAGE_TAG}"
+			docker commit "${CONTAINER}" "${IMAGE_TAG}" >/dev/null
+		fi
+	done
+else
+	echo "[WARN] docker ei loydy, konttien sisaista tilaa ei voitu tallentaa" >&2
+fi
+
 echo "student state saved to ${STATE_ROOT}"

@@ -353,12 +353,12 @@ Täydennä taulukko:
 
 | Ominaisuus | SNMP | Prometheus |
 |------------|------|------------|
-| Tiedonkeruu | | |
-| Käyttöönotto | | |
-| Mittarien määrä | | |
-| Visualisointi | | |
-| Hälytysmahdollisuudet | | |
-| Soveltuvuus pilviympäristöihin | | |
+| Tiedonkeruu |Valvontajärjestelmä kysyy laitteelta MIB‑arvoja. Laitteen tarjoamat tiedot ovat ennalta määriteltyjä | Palvelin julkaisee mittarit HTTP‑rajapinnassa, ja Prometheus hakee ne säännöllisesti.|
+| Käyttöönotto |Vaatii SNMP‑agentin asetukset, yhteisöavaimen ja usein palomuurimuutoksia. |Node Exporter toimii suoraan ilman monimutkaisia asetuksia. Riittää että palvelu käynnistetään |
+| Mittarien määrä |Riippuu laitteen MIB‑tiedostoista. Usein vain perusresurssit kuten CPU, muisti ja verkko |Mittareita on huomattavasti enemmän ja ne ovat yhdenmukaisia eri palvelimilla. |
+| Visualisointi | Tarvitsee erillisiä työkaluja kuten Cacti, LibreNMS tai Zabbix. Ulkoasu on usein vanhanaikainen. | Grafana tarjoaa suoran integraation ja modernit, muokattavat dashboardit. |
+| Hälytysmahdollisuudet | SNMP‑trapit ovat yksinkertaisia ja vaativat erillisen vastaanottimen.|Alertmanager mahdollistaa monipuoliset hälytyssäännöt ja useita ilmoituskanavia. |
+| Soveltuvuus pilviympäristöihin |Ei sovi hyvin kontteihin, koska SNMP‑agentteja ei yleensä ole saatavilla. | Suunniteltu toimimaan konttiympäristöissä ja Kubernetesissa.|
 
 ---
 
@@ -367,10 +367,22 @@ Täydennä taulukko:
 Vastaa seuraaviin kysymyksiin:
 
 1. Mitä hyötyä Prometheuksesta on verrattuna SNMP:hen?
+Prometheus on helpompi ottaa käyttöön ja antaa huomattavasti enemmän mittareitä kuin SNMP. Prometheus toimii hyvin yhteystyössä Grafanan kanssa, joten mittareitten visualisointi on selkeää ja nykyaikaisempaa.
 2. Millaisia mittareita ylläpitäjän kannattaa seurata jatkuvasti?
+- CPU-kuorma ja sen trendi
+- Muistin käyttö
+- Levytilan käyttö
+- Verkkoliikenteen määrä
+- Prosessien määrä
+- Palveluitten vastajat
 3. Mitä tietoa dashboardisi tarjoaa ylläpitäjälle?
+Dashboard näyttää palvelimen perusresurssien käytönmäärän reaaliajassa. 
 4. Mitä uusia mittareita lisäisit dashboardiin?
+Network Recieve - Network Transmit - Disk Usage - Memory Usage - CPU Usage
 5. Miten monitorointitiedosta voisi olla hyötyä vianetsinnässä?
+CPU:ta seuraamalla voisi nähdä esimerkiksi looppaavan prosessin.
+Muistia katsomalla voi nähdä jos jokin sovellus vuotaa muistia. Jos levy täyttyy tiedostot kasvavat hallitsemattomiksi. 
+Jos verkossa näkyy piikki se voi johtua hyökkäyksestä. 
 
 ---
 
