@@ -1,0 +1,26 @@
+---
+- name: Kerää faktat
+  hosts: routers
+  gather_facts: false
+
+  tasks:
+    - name: Kerää ios faktat
+      cisco.ios.ios_facts:
+        gather_subset:
+          - all
+
+    - name: näytä hostnimi
+      debug:
+        msg: "{{ ansible_net_hostname }}"
+
+    - name: ios versio
+      debug:
+        msg: "{{ ansible_net_version }}"
+
+    - name: sarjanro
+      debug:
+        msg: "{{ ansible_net_serialnum }}"
+
+    - name: interfacet
+      ansible.builtin.debug:
+        var: ansible_net_interfaces

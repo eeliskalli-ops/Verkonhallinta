@@ -83,50 +83,67 @@ Dokumentoi:
 
 ---
 
-# Tehtävä 4.3 – SNMP:n automatisointi
+# Tehtävä 4.3 – Tutustu valmiisiin esimerkkeihin
 
-Luo playbook:
+Ympäristössä on valmiina kaksi esimerkkiplaybookia, joista näet miten Ansible-playbook rakennetaan:
 
 ```text
-install-snmp.yml
+/ansible/playbooks/install-snmp.yml
+/ansible/playbooks/install-node-exporter.yml
 ```
+
+Tutki molemmat tiedostot ja vastaa:
+
+- mitä moduuleja playbookeissa käytetään (esim. `apt`, `copy`, `service`, `get_url`, `unarchive`)
+- miten muuttujia (`vars`) hyödynnetään
+- miten `handlers`-lohkoa käytetään SNMP-playbookissa
+- miksi Node Exporter -playbook ei tarvitse handleria
+
+Suorita molemmat esimerkkiplaybookit ympäristössä ja varmista, että asennukset onnistuvat:
+
+```bash
+cd /ansible/playbooks
+ansible-playbook -i ../inventory.ini install-snmp.yml
+ansible-playbook -i ../inventory.ini install-node-exporter.yml
+```
+
+Näitä playbookeja käytät mallina omien playbookien rakentamisessa seuraavissa tehtävissä.
+
+---
+
+# Tehtävä 4.4 – Oma playbook: palvelimen asennus
+
+Valitse **vähintään yksi** seuraavista tehtävistä (halutessasi voit tehdä molemmat lisäpisteiden toivossa):
+
+## Vaihtoehto A – Web-palvelin (web1)
+
+Kirjoita itse playbook `install-webserver.yml`, joka asentaa `web1`-koneelle web-palvelimen (esim. `nginx` tai `apache2`).
 
 Playbookin tulee:
 
 - päivittää pakettilista
-- asentaa snmp
-- asentaa snmpd
-- käynnistää palvelu
+- asentaa valitsemasi web-palvelinohjelmisto
+- luoda yksinkertainen `index.html`-sivu, joka kertoo palvelimen nimen
+- käynnistää ja ottaa palvelun käyttöön (`enabled: yes`)
+- varmistaa asennuksen onnistumisen (esim. `uri`-moduulilla tai `curl`-komennolla)
 
-Suorita playbook seuraaville koneille:
+## Vaihtoehto B – Tietokantapalvelin (db1)
 
-- web1
-- db1
-- branch-client
-
-Varmista asennus.
-
----
-
-# Tehtävä 4.4 – Node Exporterin automatisointi
-
-Luo playbook:
-
-```text
-install-node-exporter.yml
-```
+Kirjoita itse playbook `install-database.yml`, joka asentaa `db1`-koneelle tietokantapalvelimen (esim. `mariadb-server` tai `postgresql`).
 
 Playbookin tulee:
 
-- luoda hakemisto
-- ladata Node Exporter
-- purkaa paketti
-- käynnistää palvelu
+- päivittää pakettilista
+- asentaa valitsemasi tietokantaohjelmisto
+- käynnistää ja ottaa palvelun käyttöön
+- luoda testitietokanta tai -käyttäjä
+- varmistaa, että tietokantapalvelu on käynnissä
 
-Asenna vähintään:
+## Vaatimukset molemmille vaihtoehdoille
 
-- web1
-- db1
+- käytä samaa rakennetta kuin tehtävän 4.3 esimerkeissä (`vars`, `tasks`, tarvittaessa `handlers`)
+- suorita playbook ja korjaa mahdolliset virheet
+- ota talteen suorituksen tuloste (`ansible-playbook` output) raporttia varten
 
 ---
 
@@ -181,13 +198,13 @@ Mikä on Infrastructure as Code?
 
 Ympäristön rakenne.
 
-## SNMP Playbook
+## Esimerkkiplaybookit
 
-Koodi ja tulokset.
+Havainnot SNMP- ja Node Exporter -playbookeista.
 
-## Node Exporter Playbook
+## Oma playbook
 
-Koodi ja tulokset.
+Koodi ja suorituksen tulokset (web-palvelin ja/tai tietokantapalvelin).
 
 ## Vertailu
 
@@ -204,6 +221,6 @@ Opitut asiat.
 | Kohde | Pisteet |
 |---------|---------:|
 | Inventoryn ymmärtäminen | 2 p |
-| SNMP Playbook | 3 p |
-| Node Exporter Playbook | 3 p |
+| Esimerkkiplaybookien analyysi | 2 p |
+| Oma playbook (web1 ja/tai db1) | 4 p |
 | Raportointi | 2 p |

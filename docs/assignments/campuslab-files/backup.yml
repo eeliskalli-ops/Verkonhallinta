@@ -1,0 +1,23 @@
+---
+- name: backup
+  hosts: routers
+  gather_facts: false
+
+  tasks:
+    - name: get running
+      cisco.ios.ios_command:
+        commands:
+          - show running-config
+      register: config
+
+    - name: save config local
+      ansible.builtin.copy:
+        content: "{{ config.stdout[0] }}"
+        dest: "backups/{{ inventory_hostname }}.cfg"
+
+    - name: create config backup
+      cisco.ios.ios_config:
+        backup: true
+        backup_options:
+          filename: "{{ inventory_hostname }}.backup.cfg"
+          dir_path: backups/
