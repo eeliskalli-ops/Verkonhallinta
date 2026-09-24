@@ -146,3 +146,4 @@ Jos palvelimia on enemmän kun 3, niin käsin tekeminen ei ole järkevää.
 Automaatio varmistaa, että kofigurikaatiot ovat idettisiä.
 
 
+https://github.com/eeliskalli-ops/Verkonhallinta/blob/main/reports/week04.md
