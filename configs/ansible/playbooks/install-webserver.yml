@@ -1,0 +1,55 @@
+---
+- name: Install and configure web server
+  hosts: web1
+  become: true
+
+  vars:
+    web_package: nginx
+    index_content: |
+      <html>
+        <head><title>Web Server</title></head>
+        <body>
+          <h1>Tervetuloa palvelimelle {{ inventory_hostname }}</h1>
+          <p>Asennettu Ansible-playbookilla:).</p>
+        </body>
+      </html>
+
+  tasks:
+
+    - name: Update package cache
+      apt:
+        update_cache: yes
+
+    - name: Install web server
+      apt:
+        name: "{{ web_package }}"
+        state: present
+
+    - name: Create index.html
+      copy:
+        dest: /var/www/html/index.html
+        content: "{{ index_content }}"
+        mode: "0644"
+
+    - name: Test nginx configuration
+      command: nginx -t
+
+    - name: Check if nginx is already running
+      command: pgrep nginx
+      register: nginx_running
+      failed_when: false
+      changed_when: false
+
+    - name: Start nginx
+      shell: nginx
+      when: nginx_running.rc != 0
+
+    - name: Verify web server responds
+      uri:
+        url: http://localhost/
+        status_code: 200
+      register: web_check
+
+    - name: Show verification result  
+      debug:
+        msg: "Web server on {{ inventory_hostname }} returned status {{ web_check.status }}"
