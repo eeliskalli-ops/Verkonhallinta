@@ -162,3 +162,4 @@ Porttiskannaus ei näy lokeissa, koska:
 ```
 docker cp clab-hamk-verkonhallinta-golden-web1:/web1.3.pcap ~/Verkonhallinta/reports/Captures/web1.3.pcap
 ```
+https://github.com/eeliskalli-ops/Verkonhallinta/blob/main/reports/week05.md
