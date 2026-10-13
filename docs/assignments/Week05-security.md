@@ -30,7 +30,7 @@ Tehtävän jälkeen osaat:
 # Lähtötilanne
 
 Kirjaudu attacker-konttiin:
-
+    
 ```bash
 docker exec -it clab-hamk-verkonhallinta-golden-attacker bash
 ```
