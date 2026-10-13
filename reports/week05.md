@@ -1,55 +1,164 @@
-Raportti 
+# Viikko 5 – Verkon skannaus ja liikenteen analysointi
+**Eelis Källi – 2026**
 
-Tehtävä 5 Osa1
-Osa 1:
-Kun tekee "dns.qry.name == "yle.fi"" se hakee dns palvelut joissa esiintyy "yle" ja GeoIp asennuksen jälkeen näkee kuinka väliaikainen ipv6 osoite lähettää global unicastin ja paketti löytyy 2001:998:20::40. Tämän source address on Hanko, Fi, Elisa Oyj.
-Capture Filterillä "Tcp port 443". Näkyy sourcen olevan Kerava. Destination Ip menee Amazon.com, Inc ja maana United States.
-Display filter frame matches "yle". Löytää karkeasti kaikki missä yle esiintyy. Ylen destination GeoIP:t ovat Amazonilla, joten tämä on palvelun tuottaja. 
+---
 
-1) Dns kyselyn IP-osoite oli "195.148.239.84". TTL aika oli 128. Client hello ehdottaa "TLS 1.0". ja Server Hello antaa "TLS 1.2". 
+## Tehtävä 5 Osa 1 – DNS, GeoIP ja HTTPS-liikenne
 
-Tein aluksi ohjeiden mukaisen kontin huomasin, että Zabbix on varannut tämän portin "8080", joten loin oman portin "8888".
+### DNS-suodatus
+```
+dns.qry.name == "yle.fi"
+```
+Näyttää kaikki DNS-kyselyt joissa esiintyy *yle.fi*. GeoIP:n jälkeen näkyy että väliaikainen IPv6-osoite lähettää global unicastin. Paketti löytyy osoitteesta `2001:998:20::40`. Source location: Hanko, FI (Elisa Oyj).
 
-Kontin tekeminen
-------------------
+### HTTPS-liikenne
+Capture filter:
+```
+tcp port 443
+```
+Source: Kerava  
+Destination: Amazon.com, Inc (USA)
 
-Käytin komentoja "docker run -d \
+### Frame-suodatus
+```
+frame matches "yle"
+```
+Näyttää kaikki paketit joissa esiintyy sana “yle”. Destination GeoIP osoittaa Amazonille → Ylen palvelut hostataan siellä.
+
+### TLS-versiot
+- DNS-kyselyn IP: **195.148.239.84**
+- TTL: **128**
+- Client Hello: **TLS 1.0**
+- Server Hello: **TLS 1.2**
+
+---
+
+## Basic Auth -kontti
+
+Zabbix käytti porttia 8080 → tein oman portin 8888.
+
+### Kontin luonti
+```
+docker run -d \
   --env AUTH_USER=tllabra \
   --env AUTH_PASS=Qwerty1! \
   -v ~/site:/var/www \
   -p 8888:80 \
-  tjarvenpaa/basic_auth".
+  tjarvenpaa/basic_auth
+```
+- `docker run -d` → taustalle  
+- `AUTH_USER` / `AUTH_PASS` → tunnukset  
+- `-v ~/site:/var/www` → mounttaa index.html kontin sisään  
+- `-p 8888:80` → hostin 8888 → kontin 80  
+- Sivu avataan: `http://localhost:8888/`
 
-Tässä docker run -d käynnistää kontin taustalle. "--env AUTH_USER=tllabra" antaa nimeksi tllabra. "--env AUTH_PASS=Qwerty1!" asettaa salasanaksi "Qwerty1!". "-v ~/site:/var/www " Mouttaa WSL hakemiston ~/site kontin sisään polkuun /var/www. Kontti lukee index.html:llän täältä. "-p 8888:80  
-Ohjaa host‑koneen portin 8888 kontin porttiin 80. Sivu avataan "http://localhost:8888/". "tjarvenpaa/basic_auth" on docker image, jossa on basic auth toiminta. Kontin poisto onnistuu halutessa komennoilla docker rm <id>. 
+### Liikenteen kaappaus
+```
+sudo tcpdump -i lo -vv -w dump_auth.pcap tcp port 8888
+```
 
-Kun halusin kaapata liikenteen sivustoon käytin komentoa "sudo tcpdump -i lo -vv -w dump_auth.pcap tcp port 8888". Ennen käyttöä joutui asentamaan tcpdump wsl:llään komennoilla "sudo apt update" sudo apt install tcpdump -y". Kaappauksessa kuunnellaa interface loopback "-i lo", "-vv" näyttää pakettien sisällön tarkasti. "-w dump_auth.pcap" kirjoittaa tiedoston nimeltä "dump_auth.pcap". "tcp port 8888" on capture filter joka kaappaa vain http liikennettä. Kun sivusto on kaapattu löytyy username, sekä password HTP = Hyper Text Protokollan takaa Authorization all credentials kohdasta. Display filter, jolla löysin nämä on "http.authorization". 
+Display filter:
+```
+http.authorization
+```
 
-Tiedoston voi kopioida wsl "cp dump_auth.pcap /mnt/c/Users/eelis/Desktop/". Tämän voi liittää sitten Wiresharkkiin. 
+Tästä löytyi Basic Auth -tunnukset.
 
+Tiedoston kopiointi:
+```
+cp dump_auth.pcap /mnt/c/Users/eelis/Desktop/
+```
 
-Tehtävä 5.1-5.3
+---
 
-Tallennus "docker cp clab-hamk-verkonhallinta-golden-web1:/web1.pcap ~/Verkonhallinta/web1.pcap"
+## Tehtävä 5.1–5.3 – Porttiskannaus
 
-Skannaus tuli osoitteesta 10.10.10.200 ja meni osoitteeseen 10.10.20.101. Attacker lähetti pyynnön [SYN] portti on auki ja web1 vastasi [RST] portti kiinni.
-Portteja joita testattiin olivat https(443) ja http(80). Palvelimen vastaus oli [RST] tarkoittaen, että portti oli kiinni. Kuvankaappaus löytyy "NmapVastaukset.png".
+Kaappaus web1-kontista:
+```
+docker cp clab-hamk-verkonhallinta-golden-web1:/web1.pcap ~/Verkonhallinta/web1.pcap
+```
 
+### Havainnot
+- Source: **10.10.10.200**
+- Destination: **10.10.20.101**
+- Attacker lähetti **SYN**
+- Web1 vastasi **RST** → portti kiinni
+- Testatut portit: **80 (HTTP)** ja **443 (HTTPS)**
 
-Tehtävä 5.4
+Kuvankaappaus: *NmapVastaukset.png*
 
-DNS-liikennettä ei synny porttiskannauksesta, koska Nmap käyttää suoraa IP-osoitetta eikä tee nimiresoluutiota. DNS- kyselyn voi luoda "dig google.com" käskyllä. Kysely ei toimi tälläkään tavalla, koska kontti ei pääse nettiin asennetaan "dnsutils" ja katsotaan päästäänkö sillä. Dnsutilssiakaan ei voitu ladata samaisesta syystä joten luodaan manuaalisesti dns yhteyksiä. Lopullisen tuloksen saatiin kun laitettiin capture päälle ja annettiin komento "dig @10.10.20.101 google.com". Tämä pakottaa queryn menevän ja se pääsee web1 palveluun asti mutta web1 ei ole DNS-palvelin niin antaa takaisin "Destination Unreachable". 
-Dns kysely oli "Standard query" DNS-vastaus oli ICMP Port Unreachable. Kysely lähetettiin "10.10.20.101". Kuvankaappaus "dnsKysely.png"
+---
 
+## Tehtävä 5.4 – DNS-liikenne
 
-Tehtävä 5.5 
+Nmap ei tee DNS-kyselyitä → käyttää suoraa IP-osoitetta.
 
-Http pyyntö onnistuu "curl http://10.10.20.101" komenolla, vaikka yhteyttä ei voida muodostaa se silti näkyy Wiresharkissa. Pyynnöstä tuli sourcesta 10.10.10.200 [SYN] ja vastaus 10.10.20.101 [RST, ACK]. 
+Attackerin DNS ei toimi (ei internetiä, 127.0.0.11 stub).
 
+DNS-liikenne pakotettiin:
+```
+dig @10.10.20.101 google.com
+```
 
-Tehtävät 5.6
+### Havainnot
+- DNS-kysely: **Standard query A google.com**
+- DNS-palvelin: **10.10.20.101**
+- Web1 ei ole DNS-palvelin → **ICMP Port Unreachable**
 
-Web1 kontissa ei ole systemd-init järjestelmää eikä journald palvelua joten journalctl ei anna lokitietoja. Kontissa ei ole myöskään rsyslog palvelua joten syslog tiedostoa ei muodostu. Komennolla "last" näkee että konttiin ei kirjauduta SSH:lla vaan containerlab käynnistää nämä automaattisesti. Tämän takia siellä ei ole yhtään kirjautumista. Lastlog näyttää saman asian tämän takia kaikki käyttäjät ovat **Never logged in**.
-docker cp clab-hamk-verkonhallinta-golden-web1:/web1.3.pcap ~/Verkonhallinta/reports/Captures/web1.3.pcap 
+Kuvankaappaus: *dnsKysely.png*
 
+---
 
+## Tehtävä 5.5 – HTTP-liikenne
+
+HTTP-pyyntö attackerista:
+```
+curl http://10.10.20.101
+```
+
+Vaikka yhteys ei muodostu, TCP-yhteysyritys näkyy kaappauksessa.
+
+### Havainnot
+- Source: **10.10.10.200**
+- Destination: **10.10.20.101**
+- Pyynnön tyyppi: **SYN**
+- Vastaus: **RST, ACK** → portti kiinni
+
+Suodatin:
+```
+tcp.port == 80
+```
+
+---
+
+## Tehtävä 5.6 – Loki-analyysi
+
+Web1 on Docker-kontti → ei systemd:tä → ei journaldia → ei syslogia.
+
+### Kirjautumislokit
+```
+last
+lastlog
+```
+Havainnot:
+- Konttiin ei kirjauduta SSH:lla  
+- Containerlab käynnistää kontit automaattisesti  
+- Kaikki käyttäjät: **Never logged in**
+
+### Muut lokit
+- `dpkg.log` → paketit  
+- `apt/history.log` → paketinhallinta  
+- `nginx/access.log` ja `nginx/error.log` → valmiiksi luodut, ei aktiivista palvelua  
+
+### Johtopäätös
+Porttiskannaus ei näy lokeissa, koska:
+- web1 ei tarjoa palveluita  
+- iptables ei loggaa TCP-yhteysyrityksiä  
+- kontissa ei ole syslog/journald-palvelua  
+
+---
+
+## Lisäkaappaus
+```
+docker cp clab-hamk-verkonhallinta-golden-web1:/web1.3.pcap ~/Verkonhallinta/reports/Captures/web1.3.pcap
+```
